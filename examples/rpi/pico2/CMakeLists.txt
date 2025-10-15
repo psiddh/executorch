@@ -20,6 +20,7 @@ set(PICO_SDK_PATH ${pico_sdk_SOURCE_DIR})
 include(${PICO_SDK_PATH}/pico_sdk_init.cmake)
 
 project(executorch_pico C CXX ASM)
+set(PICO_HEAP_SIZE 32768)  # 32KB
 pico_sdk_init()
 
 set(EXECUTORCH_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../../../..)
@@ -100,7 +101,15 @@ pico_enable_stdio_uart(executorch_pico 0)
 
 # Set correct flags for Pico2 (RP2350)
 target_compile_options(
-  executorch_pico PRIVATE -mcpu=cortex-m33 -mfloat-abi=soft -mthumb
+  executorch_pico PRIVATE
+    -Os                      # Optimize for size
+    -ffunction-sections
+    -fdata-sections
+    -fno-exceptions         # Disable C++ exceptions
+    -fno-rtti              # Disable runtime type information
+    -fno-unwind-tables     # Remove unwind tables
+    -fno-stack-protector   # Disable stack protection
+    -g0                    # No debug info for embedded build
 )
 
 target_include_directories(
@@ -113,12 +122,9 @@ target_compile_definitions(
   executorch_pico
   PRIVATE C10_USING_CUSTOM_GENERATED_MACROS EXECUTORCH_ENABLE_LOGGING=OFF
           EXECUTORCH_PAL_DEFAULT=minimal
+          PICO_HEAP_SIZE=32768
 )
 
-# Optimization flags
-target_compile_options(
-  executorch_pico PRIVATE -Os -ffunction-sections -fdata-sections
-)
 
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--gc-sections")
 
@@ -129,12 +135,17 @@ target_link_libraries(
   executorch_pico
   PRIVATE ${BAREMETAL_BUILD_DIR}/lib/libexecutorch.a
           ${BAREMETAL_BUILD_DIR}/lib/libexecutorch_core.a
-          -Wl,--whole-archive
-          ${BAREMETAL_BUILD_DIR}/lib/libportable_ops_lib.a
-          -Wl,--no-whole-archive
-          ${BAREMETAL_BUILD_DIR}/lib/libportable_kernels.a
+          ${BAREMETAL_BUILD_DIR}/lib/libexecutorch_selected_kernels.a
           pico_stdlib
           pico_stdio_usb
+)
+
+# Heapless and small stack
+target_link_options(executorch_pico PRIVATE
+    "LINKER:--defsym=__heap_size__=0"      # Zero heap!
+    "LINKER:--defsym=__stack_size__=4096"  # 4KB stack
+    "LINKER:--gc-sections"
+    "LINKER:-Map=${CMAKE_CURRENT_BINARY_DIR}/executorch_pico.map"
 )
 
 # Only add extra outputs if the target builds successfully
