@@ -11,6 +11,9 @@ on:
     paths:
       - .ci/docker/ci_commit_pins/pytorch.txt
       - .ci/scripts/**
+      - backends/arm/**
+      - examples/arm/**
+      - backends/cortex_m/**
   workflow_dispatch:
 
 concurrency:
