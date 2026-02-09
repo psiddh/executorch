@@ -1,21 +1,12 @@
 name: Hackathon Docker Images
 
 on:
-  workflow_dispatch:
-    inputs:
-      image:
-        description: 'Which image to build'
-        required: true
-        type: choice
-        options:
-          - all
-          - basic
-          - android
-          - arm
+  push:
+    branches:
+      - docker
 
 jobs:
   build-basic:
-    if: ${{ github.event.inputs.image == 'all' || github.event.inputs.image == 'basic' }}
     runs-on: ubuntu-latest
     timeout-minutes: 360
     steps:
@@ -39,7 +30,6 @@ jobs:
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/executorch-hackathon:basic
 
   build-android:
-    if: ${{ github.event.inputs.image == 'all' || github.event.inputs.image == 'android' }}
     runs-on: ubuntu-latest
     timeout-minutes: 360
     steps:
@@ -63,7 +53,6 @@ jobs:
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/executorch-hackathon:android
 
   build-arm:
-    if: ${{ github.event.inputs.image == 'all' || github.event.inputs.image == 'arm' }}
     runs-on: ubuntu-latest
     timeout-minutes: 360
     steps:
