@@ -17,6 +17,17 @@ jobs:
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache
           df -h
 
+      - name: Patch out sccache from Dockerfile
+        working-directory: .ci/docker
+        run: |
+          # Replace sccache install with a no-op so compilers aren't wrapped
+          cat > common/install_cache.sh << 'PATCH'
+          #!/bin/bash
+          echo "Skipping sccache install (not needed for local/hackathon builds)"
+          mkdir -p /opt/cache/bin
+          PATCH
+          chmod +x common/install_cache.sh
+
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
         with:
@@ -40,6 +51,16 @@ jobs:
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache
           df -h
 
+      - name: Patch out sccache from Dockerfile
+        working-directory: .ci/docker
+        run: |
+          cat > common/install_cache.sh << 'PATCH'
+          #!/bin/bash
+          echo "Skipping sccache install (not needed for local/hackathon builds)"
+          mkdir -p /opt/cache/bin
+          PATCH
+          chmod +x common/install_cache.sh
+
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
         with:
@@ -62,6 +83,16 @@ jobs:
         run: |
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache
           df -h
+
+      - name: Patch out sccache from Dockerfile
+        working-directory: .ci/docker
+        run: |
+          cat > common/install_cache.sh << 'PATCH'
+          #!/bin/bash
+          echo "Skipping sccache install (not needed for local/hackathon builds)"
+          mkdir -p /opt/cache/bin
+          PATCH
+          chmod +x common/install_cache.sh
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
