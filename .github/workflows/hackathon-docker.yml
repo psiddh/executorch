@@ -20,11 +20,15 @@ jobs:
       - name: Patch out sccache from Dockerfile
         working-directory: .ci/docker
         run: |
-          # Replace sccache install with a no-op so compilers aren't wrapped
+          # Replace sccache install with a no-op that creates a dummy sccache binary
           cat > common/install_cache.sh << 'PATCH'
           #!/bin/bash
           echo "Skipping sccache install (not needed for local/hackathon builds)"
           mkdir -p /opt/cache/bin
+          # Create a dummy sccache so scripts that call it don't fail
+          echo '#!/bin/bash' > /opt/cache/bin/sccache
+          echo 'echo "sccache disabled"' >> /opt/cache/bin/sccache
+          chmod +x /opt/cache/bin/sccache
           PATCH
           chmod +x common/install_cache.sh
 
@@ -58,6 +62,9 @@ jobs:
           #!/bin/bash
           echo "Skipping sccache install (not needed for local/hackathon builds)"
           mkdir -p /opt/cache/bin
+          echo '#!/bin/bash' > /opt/cache/bin/sccache
+          echo 'echo "sccache disabled"' >> /opt/cache/bin/sccache
+          chmod +x /opt/cache/bin/sccache
           PATCH
           chmod +x common/install_cache.sh
 
@@ -91,6 +98,9 @@ jobs:
           #!/bin/bash
           echo "Skipping sccache install (not needed for local/hackathon builds)"
           mkdir -p /opt/cache/bin
+          echo '#!/bin/bash' > /opt/cache/bin/sccache
+          echo 'echo "sccache disabled"' >> /opt/cache/bin/sccache
+          chmod +x /opt/cache/bin/sccache
           PATCH
           chmod +x common/install_cache.sh
 
