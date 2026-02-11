@@ -171,3 +171,96 @@ jobs:
         run: |
           ./build.sh executorch-ubuntu-22.04-gcc11-aarch64 -t ${{ secrets.DOCKERHUB_USERNAME }}/executorch-hackathon:basic-arm64
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/executorch-hackathon:basic-arm64
+
+  build-android-arm64:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Free up disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache
+          df -h
+
+      - name: Patch out sccache and add aarch64-android build target
+        working-directory: .ci/docker
+        run: |
+          cat > common/install_cache.sh << 'PATCH'
+          #!/bin/bash
+          echo "Skipping sccache install (not needed for local/hackathon builds)"
+          mkdir -p /opt/cache/bin
+          cat > /opt/cache/bin/sccache << 'SCCACHE'
+          #!/bin/bash
+          if [ $# -eq 0 ] || [[ "$1" == --* ]]; then
+            exit 0
+          fi
+          exec "$@"
+          SCCACHE
+          chmod +x /opt/cache/bin/sccache
+          PATCH
+          chmod +x common/install_cache.sh
+
+          # Add aarch64-android case to build.sh
+          sed -i 's/executorch-ubuntu-22.04-gcc11-aarch64)/executorch-ubuntu-22.04-gcc11-aarch64)\n    LINTRUNNER=""\n    GCC_VERSION=11\n    ;;\n  executorch-ubuntu-22.04-gcc11-aarch64-android)/' build.sh
+          sed -i '/executorch-ubuntu-22.04-gcc11-aarch64-android)/a\    LINTRUNNER=""\n    GCC_VERSION=11\n    ANDROID_NDK_VERSION=r28c' build.sh
+
+          # Patch install_android.sh to download aarch64 NDK from Google directly
+          sed -i 's|curl -Os --retry 3 "https://ossci-android.s3.amazonaws.com/android-ndk-${ANDROID_NDK_VERSION}-linux.zip"|curl -Os --retry 3 "https://dl.google.com/android/repository/android-ndk-${ANDROID_NDK_VERSION}-linux.zip"|' common/install_android.sh
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push arm64 android image
+        working-directory: .ci/docker
+        run: |
+          ./build.sh executorch-ubuntu-22.04-gcc11-aarch64-android -t ${{ secrets.DOCKERHUB_USERNAME }}/executorch-hackathon:android-arm64
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/executorch-hackathon:android-arm64
+
+  build-arm-sdk-arm64:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Free up disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache
+          df -h
+
+      - name: Patch out sccache and add aarch64-arm-sdk build target
+        working-directory: .ci/docker
+        run: |
+          cat > common/install_cache.sh << 'PATCH'
+          #!/bin/bash
+          echo "Skipping sccache install (not needed for local/hackathon builds)"
+          mkdir -p /opt/cache/bin
+          cat > /opt/cache/bin/sccache << 'SCCACHE'
+          #!/bin/bash
+          if [ $# -eq 0 ] || [[ "$1" == --* ]]; then
+            exit 0
+          fi
+          exec "$@"
+          SCCACHE
+          chmod +x /opt/cache/bin/sccache
+          PATCH
+          chmod +x common/install_cache.sh
+
+          # Add aarch64-arm-sdk case to build.sh
+          sed -i 's/executorch-ubuntu-22.04-gcc11-aarch64)/executorch-ubuntu-22.04-gcc11-aarch64)\n    LINTRUNNER=""\n    GCC_VERSION=11\n    ;;\n  executorch-ubuntu-22.04-gcc11-aarch64-arm-sdk)/' build.sh
+          sed -i '/executorch-ubuntu-22.04-gcc11-aarch64-arm-sdk)/a\    ARM_SDK=yes\n    GCC_VERSION=11' build.sh
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push arm64 arm-sdk image
+        working-directory: .ci/docker
+        run: |
+          ./build.sh executorch-ubuntu-22.04-gcc11-aarch64-arm-sdk -t ${{ secrets.DOCKERHUB_USERNAME }}/executorch-hackathon:arm-arm64
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/executorch-hackathon:arm-arm64
