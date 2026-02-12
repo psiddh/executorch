@@ -208,6 +208,9 @@ jobs:
           # Patch install_android.sh to download aarch64 NDK from Google directly
           sed -i 's|curl -Os --retry 3 "https://ossci-android.s3.amazonaws.com/android-ndk-${ANDROID_NDK_VERSION}-linux.zip"|curl -Os --retry 3 "https://dl.google.com/android/repository/android-ndk-${ANDROID_NDK_VERSION}-linux.zip"|' common/install_android.sh
 
+          # Remove 'tools' install from SDK - emulator package not available on ARM64 Linux
+          sed -i '/sdkmanager.*--install "tools"/d' common/install_android.sh
+
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
         with:
