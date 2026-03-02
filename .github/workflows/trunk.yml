@@ -11,6 +11,9 @@ on:
     paths:
       - .ci/docker/ci_commit_pins/pytorch.txt
       - .ci/scripts/**
+      - backends/arm/**
+      - examples/arm/**
+      - backends/cortex_m/**
   workflow_dispatch:
 
 concurrency:
@@ -1054,6 +1057,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       qnn: ${{ steps.filter.outputs.qnn }}
+      arm: ${{ steps.filter.outputs.arm }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
@@ -1064,6 +1068,10 @@ jobs:
               - 'backends/qualcomm/**'
               - 'examples/qualcomm/**'
               - 'examples/models/llama/**'
+            arm:
+              - 'backends/arm/**'
+              - 'examples/arm/**'
+              - 'backends/cortex_m/**'
 
   test-static-llama-qnn-eval-linux:
     needs: changes # has dependency on changes jobs defined above
@@ -1138,6 +1146,8 @@ jobs:
         }"
 
   test-mcu-cortex-m-backend:
+    needs: changes
+    if: needs.changes.outputs.arm == 'true'
     name: test-mcu-cortex-m-backend
     uses: pytorch/test-infra/.github/workflows/linux_job_v2.yml@main
     permissions:
