@@ -297,10 +297,9 @@ class SGDHybrid : public facebook::jni::HybridClass<SGDHybrid> {
         std::make_unique<optimizer::SGD>(cppNamedParameters, options);
   }
 
-  void step(
-      facebook::jni::alias_ref<
-          facebook::jni::JMap<jstring, TensorHybrid::javaobject>>
-          namedGradients) {
+  void
+  step(facebook::jni::alias_ref<
+       facebook::jni::JMap<jstring, TensorHybrid::javaobject>> namedGradients) {
     std::map<std::string_view, executorch::aten::Tensor> cppNamedGradients;
     std::vector<std::string> gradientNames;
     std::vector<TensorPtr> tensorKeepalives;
