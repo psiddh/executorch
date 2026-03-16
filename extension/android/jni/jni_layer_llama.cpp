@@ -211,8 +211,11 @@ class ExecuTorchLlmJni : public facebook::jni::HybridClass<ExecuTorchLlmJni> {
     Error err = Error::Ok;
     if (!prompt) {
       err = Error::InvalidArgument;
-      callback->onError(
-          static_cast<int>(err), "generate() failed: prompt must not be null");
+      if (callback) {
+        callback->onError(
+            static_cast<int>(err),
+            "generate() failed: prompt must not be null");
+      }
       return static_cast<jint>(err);
     }
 
@@ -232,7 +235,9 @@ class ExecuTorchLlmJni : public facebook::jni::HybridClass<ExecuTorchLlmJni> {
         }
         std::string result = token_buffer;
         token_buffer.clear();
-        callback->onResult(result);
+        if (callback) {
+          callback->onResult(result);
+        }
       };
 
       if (model_type_category_ == MODEL_TYPE_CATEGORY_MULTIMODAL) {
@@ -252,7 +257,9 @@ class ExecuTorchLlmJni : public facebook::jni::HybridClass<ExecuTorchLlmJni> {
             config,
             token_callback,
             [callback](const llm::Stats& result) {
-              callback->onStats(result);
+              if (callback) {
+                callback->onStats(result);
+              }
             });
       } else if (model_type_category_ == MODEL_TYPE_CATEGORY_LLM) {
         executorch::extension::llm::GenerationConfig config{
@@ -267,21 +274,25 @@ class ExecuTorchLlmJni : public facebook::jni::HybridClass<ExecuTorchLlmJni> {
             config,
             token_callback,
             [callback](const llm::Stats& result) {
-              callback->onStats(result);
+              if (callback) {
+                callback->onStats(result);
+              }
             });
       } else {
         err = Error::InvalidArgument;
       }
-      if (err != Error::Ok) {
+      if (err != Error::Ok && callback) {
         callback->onError(
             static_cast<int>(err),
             "generate() failed with error code " +
                 std::to_string(static_cast<int>(err)));
       }
     } catch (const std::exception& e) {
-      callback->onError(
-          static_cast<int>(Error::Internal),
-          std::string("generate() threw: ") + e.what());
+      if (callback) {
+        callback->onError(
+            static_cast<int>(Error::Internal),
+            std::string("generate() threw: ") + e.what());
+      }
       return static_cast<jint>(Error::Internal);
     }
     return static_cast<jint>(err);

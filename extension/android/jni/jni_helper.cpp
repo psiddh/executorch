@@ -73,12 +73,31 @@ void setExecutorchPendingException(
   }
 
   if (!factoryMethod) {
-    // ExecutorchRuntimeException lacks a (String) ctor, so fall back to
-    // a standard RuntimeException with the details message.
-    jclass runtimeExClass = env->FindClass("java/lang/RuntimeException");
-    if (!env->ExceptionCheck() && runtimeExClass) {
-      env->ThrowNew(runtimeExClass, details.c_str());
-      env->DeleteLocalRef(runtimeExClass);
+    // Factory unavailable; try the (int, String) constructor directly so
+    // callers still receive a structured ExecutorchRuntimeException.
+    jmethodID ctor =
+        env->GetMethodID(exceptionClass, "<init>", "(ILjava/lang/String;)V");
+    if (!env->ExceptionCheck() && ctor) {
+      jstring jDetails = env->NewStringUTF(details.c_str());
+      if (!env->ExceptionCheck() && jDetails) {
+        jobject exObj = env->NewObject(
+            exceptionClass, ctor, static_cast<jint>(errorCode), jDetails);
+        if (!env->ExceptionCheck() && exObj) {
+          env->Throw(reinterpret_cast<jthrowable>(exObj));
+          env->DeleteLocalRef(exObj);
+        }
+        env->DeleteLocalRef(jDetails);
+      }
+    } else {
+      // Clear any NoSuchMethodError from GetMethodID before falling back.
+      if (env->ExceptionCheck()) {
+        env->ExceptionClear();
+      }
+      jclass runtimeExClass = env->FindClass("java/lang/RuntimeException");
+      if (!env->ExceptionCheck() && runtimeExClass) {
+        env->ThrowNew(runtimeExClass, details.c_str());
+        env->DeleteLocalRef(runtimeExClass);
+      }
     }
     env->DeleteLocalRef(exceptionClass);
     return;
