@@ -85,6 +85,7 @@ class ExecuTorchLlmJni : public facebook::jni::HybridClass<ExecuTorchLlmJni> {
  private:
   friend HybridBase;
   float temperature_ = 0.0f;
+  bool needs_bos_ = true;
   int num_bos_ = 0;
   int num_eos_ = 0;
   int model_type_category_;
@@ -219,31 +220,27 @@ class ExecuTorchLlmJni : public facebook::jni::HybridClass<ExecuTorchLlmJni> {
       return static_cast<jint>(err);
     }
 
-    try {
-      float effective_temperature =
-          temperature >= 0 ? temperature : temperature_;
-      std::string prompt_str = prompt->toStdString();
-      std::string token_buffer;
-      auto token_callback = [callback,
-                             &token_buffer](const std::string& token) {
-        token_buffer += token;
-        if (!utf8_check_validity(token_buffer.c_str(), token_buffer.size())) {
-          ET_LOG(
-              Info,
-              "Current token buffer is not valid UTF-8. Waiting for more.");
-          return;
-        }
-        std::string result = token_buffer;
-        token_buffer.clear();
-        if (callback) {
-          callback->onResult(result);
-        }
-      };
+    float effective_temperature = temperature >= 0 ? temperature : temperature_;
+    std::string token_buffer;
+    auto token_callback = [callback, &token_buffer](const std::string& token) {
+      token_buffer += token;
+      if (!utf8_check_validity(token_buffer.c_str(), token_buffer.size())) {
+        ET_LOG(
+            Info, "Current token buffer is not valid UTF-8. Waiting for more.");
+        return;
+      }
+      std::string result = token_buffer;
+      token_buffer.clear();
+      if (callback) {
+        callback->onResult(result);
+      }
+    };
 
+    try {
       if (model_type_category_ == MODEL_TYPE_CATEGORY_MULTIMODAL) {
         std::vector<llm::MultimodalInput> inputs = std::move(prefill_inputs_);
-        if (!prompt_str.empty()) {
-          inputs.emplace_back(llm::MultimodalInput{prompt_str});
+        if (!prompt->toStdString().empty()) {
+          inputs.emplace_back(llm::MultimodalInput{prompt->toStdString()});
         }
         executorch::extension::llm::GenerationConfig config{
             .echo = static_cast<bool>(echo),
@@ -262,15 +259,18 @@ class ExecuTorchLlmJni : public facebook::jni::HybridClass<ExecuTorchLlmJni> {
               }
             });
       } else if (model_type_category_ == MODEL_TYPE_CATEGORY_LLM) {
+        if (!runner_) {
+          return static_cast<jint>(Error::InvalidState);
+        }
         executorch::extension::llm::GenerationConfig config{
             .echo = static_cast<bool>(echo),
             .seq_len = seq_len,
             .temperature = effective_temperature,
-            .num_bos = num_bos,
+            .num_bos = needs_bos_ ? num_bos_ : 0,
             .num_eos = num_eos,
         };
         err = runner_->generate(
-            prompt_str,
+            prompt->toStdString(),
             config,
             token_callback,
             [callback](const llm::Stats& result) {
@@ -278,6 +278,9 @@ class ExecuTorchLlmJni : public facebook::jni::HybridClass<ExecuTorchLlmJni> {
                 callback->onStats(result);
               }
             });
+        if (err == Error::Ok) {
+          needs_bos_ = false;
+        }
       } else {
         err = Error::InvalidArgument;
       }
@@ -479,6 +482,7 @@ class ExecuTorchLlmJni : public facebook::jni::HybridClass<ExecuTorchLlmJni> {
   }
 
   void reset_context() {
+    needs_bos_ = true;
     if (runner_ != nullptr) {
       runner_->reset();
     }
