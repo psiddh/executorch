@@ -237,52 +237,27 @@ class ExecuTorchLlmJni : public facebook::jni::HybridClass<ExecuTorchLlmJni> {
     };
 
     try {
-      if (model_type_category_ == MODEL_TYPE_CATEGORY_MULTIMODAL) {
-        std::vector<llm::MultimodalInput> inputs = std::move(prefill_inputs_);
-        if (!prompt->toStdString().empty()) {
-          inputs.emplace_back(llm::MultimodalInput{prompt->toStdString()});
-        }
-        executorch::extension::llm::GenerationConfig config{
-            .echo = static_cast<bool>(echo),
-            .seq_len = seq_len,
-            .temperature = effective_temperature,
-            .num_bos = num_bos,
-            .num_eos = num_eos,
-        };
-        err = multi_modal_runner_->generate(
-            std::move(inputs),
-            config,
-            token_callback,
-            [callback](const llm::Stats& result) {
-              if (callback) {
-                callback->onStats(result);
-              }
-            });
-      } else if (model_type_category_ == MODEL_TYPE_CATEGORY_LLM) {
-        if (!runner_) {
-          return static_cast<jint>(Error::InvalidState);
-        }
-        executorch::extension::llm::GenerationConfig config{
-            .echo = static_cast<bool>(echo),
-            .seq_len = seq_len,
-            .temperature = effective_temperature,
-            .num_bos = needs_bos_ ? num_bos_ : 0,
-            .num_eos = num_eos,
-        };
-        err = runner_->generate(
-            prompt->toStdString(),
-            config,
-            token_callback,
-            [callback](const llm::Stats& result) {
-              if (callback) {
-                callback->onStats(result);
-              }
-            });
-        if (err == Error::Ok) {
-          needs_bos_ = false;
-        }
-      } else {
-        err = Error::InvalidArgument;
+      if (!runner_) {
+        return static_cast<jint>(Error::InvalidState);
+      }
+      executorch::extension::llm::GenerationConfig config{
+          .echo = static_cast<bool>(echo),
+          .seq_len = seq_len,
+          .temperature = effective_temperature,
+          .num_bos = needs_bos_ ? num_bos_ : 0,
+          .num_eos = num_eos,
+      };
+      err = runner_->generate(
+          prompt->toStdString(),
+          config,
+          token_callback,
+          [callback](const llm::Stats& result) {
+            if (callback) {
+              callback->onStats(result);
+            }
+          });
+      if (err == Error::Ok) {
+        needs_bos_ = false;
       }
       if (err != Error::Ok && callback) {
         callback->onError(
