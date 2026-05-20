@@ -47,20 +47,16 @@ class LlmModuleConversationHistoryTest {
   @Throws(IOException::class)
   fun setUp() {
     val pteFile = File(getTestFilePath(TEST_FILE_NAME))
-    val pteStream =
-        requireNotNull(javaClass.getResourceAsStream(TEST_FILE_NAME)) {
+    requireNotNull(javaClass.getResourceAsStream(TEST_FILE_NAME)) {
           "Test resource $TEST_FILE_NAME not found; did android_test_setup.sh run?"
         }
-    FileUtils.copyInputStreamToFile(pteStream, pteFile)
-    pteStream.close()
+        .use { pteStream -> FileUtils.copyInputStreamToFile(pteStream, pteFile) }
 
     val tokenizerFile = File(getTestFilePath(TOKENIZER_FILE_NAME))
-    val tokenizerStream =
-        requireNotNull(javaClass.getResourceAsStream(TOKENIZER_FILE_NAME)) {
+    requireNotNull(javaClass.getResourceAsStream(TOKENIZER_FILE_NAME)) {
           "Test resource $TOKENIZER_FILE_NAME not found; did android_test_setup.sh run?"
         }
-    FileUtils.copyInputStreamToFile(tokenizerStream, tokenizerFile)
-    tokenizerStream.close()
+        .use { tokenizerStream -> FileUtils.copyInputStreamToFile(tokenizerStream, tokenizerFile) }
 
     llmModule =
         LlmModule(getTestFilePath(TEST_FILE_NAME), getTestFilePath(TOKENIZER_FILE_NAME), 0.0f)
@@ -118,7 +114,7 @@ class LlmModuleConversationHistoryTest {
           firstRun,
           secondRun,
       )
-    } catch (_: RuntimeException) {
+    } catch (_: ExecutorchRuntimeException) {
       // The second generate() threw because KV-cache state from the first call
       // affected execution — this also proves state persistence.
     }
