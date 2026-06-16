@@ -353,6 +353,16 @@ class QuantizedOpFusionPass(ExportPass):
             )
             avg_padding = [0, 0]
 
+        # Create placeholder scratch alloc — sized by ConvertToCortexMPass later.
+        import executorch.exir as exir
+
+        scratch = super().call_operator(
+            exir.memory.alloc,
+            (((0,), torch.uint8),),
+            {},
+            NodeMetadata({}),
+        )
+
         args = (
             input_arg,
             kernel_size,
@@ -361,6 +371,7 @@ class QuantizedOpFusionPass(ExportPass):
             zero_point,
             output_mult,
             output_shift,
+            scratch,
         )
 
         return exir_ops.edge.cortex_m.quantized_avg_pool2d.default, args

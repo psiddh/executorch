@@ -22,6 +22,7 @@ Tensor& quantized_avg_pool2d_out(
     const int64_t zero_point,
     const int64_t multiplier,
     const int64_t shift,
+    const Tensor& scratch,
     Tensor& out) {
   constexpr int32_t activation_min = std::numeric_limits<int8_t>::min();
   constexpr int32_t activation_max = std::numeric_limits<int8_t>::max();
@@ -46,8 +47,12 @@ Tensor& quantized_avg_pool2d_out(
   }
 
   cmsis_nn_context cmsis_ctx;
-  cmsis_ctx.buf = nullptr;
-  cmsis_ctx.size = 0;
+  cmsis_ctx.size = scratch.nbytes();
+  if (cmsis_ctx.size > 0) {
+    cmsis_ctx.buf = scratch.mutable_data_ptr<int8_t>();
+  } else {
+    cmsis_ctx.buf = nullptr;
+  }
 
   const int8_t* input_data = input.const_data_ptr<int8_t>();
   int8_t* output_data = out.mutable_data_ptr<int8_t>();

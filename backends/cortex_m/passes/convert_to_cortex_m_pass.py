@@ -564,6 +564,12 @@ class ConvertToCortexMPass(CortexMPass):
 
             modified = True
 
+        # Size the scratch buffers for cortex_m.quantized_avg_pool2d nodes
+        # created by QuantizedOpFusionPass (which creates a zero-size alloc).
+        for node in list(graph_module.graph.nodes):
+            if node.target == exir_ops.edge.cortex_m.quantized_avg_pool2d.default:
+                self._initialize_alloc_node_size(node)
+
         if modified:
             graph_module.graph.eliminate_dead_code()
             graph_module.recompile()
