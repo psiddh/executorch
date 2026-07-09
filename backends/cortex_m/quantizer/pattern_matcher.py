@@ -69,7 +69,11 @@ class PatternMatcher:
             return PatternMatchResult(match, False, self.REJECT_PREVIOUSLY_ANNOTATED)
 
         # Reject match if it contains a node that has an input which is too large to be quantized
-        if any(_is_large_scalar(node, node.graph.owning_module) for node in match):
+        if any(
+            node.graph.owning_module is not None
+            and _is_large_scalar(node, node.graph.owning_module)
+            for node in match
+        ):
             return PatternMatchResult(match, False, self.REJECT_LARGE_SCALAR)
 
         if all(node.op in ("placeholder", "output") for node in match):
