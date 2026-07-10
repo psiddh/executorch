@@ -894,6 +894,39 @@ class TestPasses(unittest.TestCase):
         self.assertEqual(spec[1].shape_dynamism, TensorShapeDynamism.DYNAMIC_BOUND)
         self.assertEqual(spec[1].shape[1], 3)  # Second dim is static
 
+    def test_spec_prop_update_placeholder_skips_non_tensor_spec(self) -> None:
+        """update_placeholder_tensor_specs should skip placeholders whose spec
+        is a raw scalar or None (no .const attribute) instead of raising
+        AttributeError."""
+
+        class ScalarInputModel(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.weight = torch.nn.Parameter(torch.randn(4, 4))
+
+            def forward(self, x):
+                return x @ self.weight
+
+        m = ScalarInputModel()
+        ep = torch.export.export(m, (torch.randn(2, 4),))
+        edge = to_edge(ep)
+        gm = edge.exported_program().graph_module
+
+        spp = SpecPropPass()
+        result = spp(gm)
+        new_gm = result.graph_module
+
+        placeholder_nodes = [n for n in new_gm.graph.nodes if n.op == "placeholder"]
+        self.assertTrue(len(placeholder_nodes) >= 1)
+
+        for node in placeholder_nodes:
+            spec = node.meta.get("spec")
+            if spec is not None and hasattr(spec, "const"):
+                node.meta["spec"] = None
+                break
+
+        spp.update_placeholder_tensor_specs(edge.exported_program(), new_gm)
+
     def test_compile_fix_broken_ops(self) -> None:
         class ExportableLoop(nn.Module):
             def __init__(self, hidden_size, out_channels):

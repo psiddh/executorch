@@ -120,6 +120,8 @@ class SpecPropPass(ExportPass):
             if "spec" not in node.meta:
                 raise RuntimeError(f"Placeholder node {node} missing meta['spec']")
             spec = node.meta["spec"]
+            if not hasattr(spec, "const"):
+                continue
             if isinstance(node.target, str) and (
                 node.target in exported_program.graph_signature.inputs_to_parameters
                 or (
