@@ -200,6 +200,8 @@ def compile(
         pte_filenames=pte_filenames,
         skip_quantize=skip_quantize,
     )
+    # Seam: in build_only mode compile() stopped before lowering; hand back the deploy graph-set.
+    return multi_modal_mgr.text_decoder.deploy_graphset
 
 
 def inference(
@@ -648,7 +650,8 @@ def _build_parser():
     return parser
 
 
-def export_llama(args) -> None:
+def export_llama(args, build_only=False):
+    args.build_only = build_only
     if args.compile_only and args.pre_gen_pte:
         raise RuntimeError("Cannot set both compile_only and pre_gen_pte as true")
     if (TASKS_EVAL or SQNR_EVAL) in args.eval_methods and args.model_mode not in {
@@ -793,13 +796,15 @@ def export_llama(args) -> None:
         print(f"Finish the running pre_gen_pte from {args.pre_gen_pte}")
         return
 
-    compile(
+    graphset = compile(
         args,
         decoder_model_config,
         pte_filenames,
         tokenizer_wrapper,
         is_multimodal,
     )
+    if build_only:
+        return graphset
     if args.use_attention_sink:
         compile_attention_sink_evictor(
             args,

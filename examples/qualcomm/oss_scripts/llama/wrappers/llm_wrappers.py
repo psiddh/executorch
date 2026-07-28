@@ -111,6 +111,24 @@ from torchao.quantization.pt2e import MinMaxObserver
 from torchao.quantization.pt2e.quantize_pt2e import convert_pt2e, prepare_pt2e
 from transformers import AutoModel, AutoModelForSpeechSeq2Seq
 
+from dataclasses import dataclass, field
+
+
+@dataclass
+class QnnLLMGraphSet:
+    """The surgered + 16a4w-quantized + encoding-overridden deploy graphs, returned before
+    lowering so an external driver (e.g. the HuggingFace ExecuTorch exporter) can run
+    torch.export + to_edge itself. This is the return-not-write seam of HybridTextDecoder.compile."""
+
+    modules: dict
+    inputs: dict
+    compiler_specs: dict
+    constant_methods: dict = field(default_factory=dict)
+    dep_table: dict = field(default_factory=dict)
+    passes_job: dict = field(default_factory=dict)
+    skip_node_op_set: set = field(default_factory=set)
+    backend_config: object = None
+
 
 def is_node_src_start_with_name(node: torch.fx.Node, kv_cache_prefix: str) -> bool:
     """
@@ -985,6 +1003,28 @@ class HybridTextDecoder(Component):
         models = [d for d in [self.decode, self.prefill] if d.decoder is not None]
         example_inputs = [m.export_input for m in models if m is not None]
         graph_names = DECODER_GRAPH_NAMES[: len(models)]
+
+        # ── Seam: assemble the deploy graph-set (surgered + quantized + encoding-overridden).
+        # In build_only mode the caller (e.g. the HF ExecuTorch exporter) drives torch.export +
+        # to_edge itself, so we return here — before lowering/serialize. Native export (build_only
+        # unset) falls through to the unchanged lowering below, so its .pte is byte-identical.
+        self.deploy_graphset = QnnLLMGraphSet(
+            modules=dict(zip(graph_names, [m.decoder for m in models])),
+            inputs=dict(zip(graph_names, example_inputs)),
+            compiler_specs=dict(zip(graph_names, data.compile_spec)),
+            constant_methods={**self.decode.meta},
+            dep_table=dict(zip(graph_names, [m.dep_table for m in models])),
+            passes_job=dict(zip(graph_names, [m.passes_job for m in models])),
+            skip_node_op_set={"llama.fallback.default"},
+            backend_config=ExecutorchBackendConfig(
+                memory_planning_pass=MemoryPlanningPass(
+                    alloc_graph_input=False, alloc_graph_output=False
+                ),
+                passes=[BuildQuantIo()],
+            ),
+        )
+        if getattr(self.control_args, "build_only", False):
+            return
 
         # start lowering
         if self.apply_embedding:
