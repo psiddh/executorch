@@ -138,9 +138,26 @@ that needs raising, a board core version. This goes first, not last.>
 Title the release with what a user cares about, for example
 `v0.2.0 — ETModel helper and Arduino platform layer`.
 
-Add a matching `CHANGELOG.md` entry in that repository's existing format.
+## 10. Update the changelog
 
-## 10. Confirm it indexed
+`CHANGELOG.md` is not generated — the build script never touches it, so it only
+moves if you move it. It is also the record that travels with the library,
+where the release page does not: someone who installs from Library Manager and
+looks in the folder sees the changelog, not GitHub.
+
+It follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/):
+`### Added`, `### Changed`, `### Fixed`, `### Removed`, plus a
+`### Known limitations` section this project uses to record what a version
+cannot do.
+
+If an `unreleased` section has accumulated entries, **replace** it with the new
+version heading rather than adding a section above it. Those entries are part
+of what you are shipping, and appending leaves them listed twice.
+
+Say why, not only what. "28 KB worked on core 0.55.2 and fails on 0.90.0 by 180
+bytes" tells the next person something; "fixed arena size" does not.
+
+## 11. Confirm it indexed
 
 Indexing takes an hour or two:
 
