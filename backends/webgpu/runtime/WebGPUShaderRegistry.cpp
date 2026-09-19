@@ -159,7 +159,7 @@
 namespace executorch::backends::webgpu {
 namespace {
 
-constexpr std::array<WebGPUShaderInfo, 138> kShaderRegistry = {{
+constexpr std::array<WebGPUShaderInfo, 141> kShaderRegistry = {{
     {
         "abs",
         kAbsWGSL,
