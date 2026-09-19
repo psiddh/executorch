@@ -11,6 +11,7 @@
 #include <executorch/backends/webgpu/runtime/WebGPUShaderRegistry.h>
 
 #include <executorch/backends/webgpu/runtime/ops/adamw/adamw_step_wgsl.h>
+#include <executorch/backends/webgpu/runtime/ops/add/binary_add_int_wgsl.h>
 #include <executorch/backends/webgpu/runtime/ops/add/binary_add_wgsl.h>
 #include <executorch/backends/webgpu/runtime/ops/addmm/addmm_tiled_wgsl.h>
 #include <executorch/backends/webgpu/runtime/ops/arange/arange_int_wgsl.h>
@@ -21,8 +22,10 @@
 #include <executorch/backends/webgpu/runtime/ops/binary_op/binary_div_wgsl.h>
 #include <executorch/backends/webgpu/runtime/ops/binary_op/binary_floor_divide_wgsl.h>
 #include <executorch/backends/webgpu/runtime/ops/binary_op/binary_minimum_wgsl.h>
+#include <executorch/backends/webgpu/runtime/ops/binary_op/binary_mul_int_wgsl.h>
 #include <executorch/backends/webgpu/runtime/ops/binary_op/binary_mul_wgsl.h>
 #include <executorch/backends/webgpu/runtime/ops/binary_op/binary_pow_wgsl.h>
+#include <executorch/backends/webgpu/runtime/ops/binary_op/binary_sub_int_wgsl.h>
 #include <executorch/backends/webgpu/runtime/ops/binary_op/binary_sub_wgsl.h>
 #include <executorch/backends/webgpu/runtime/ops/bitwise_not/bitwise_not_wgsl.h>
 #include <executorch/backends/webgpu/runtime/ops/bmm/bmm_tiled_wgsl.h>
@@ -242,6 +245,13 @@ constexpr std::array<WebGPUShaderInfo, 138> kShaderRegistry = {{
         kBinaryAddWorkgroupSizeZ,
     },
     {
+        "binary_add_int",
+        kBinaryAddIntWGSL,
+        kBinaryAddIntWorkgroupSizeX,
+        kBinaryAddIntWorkgroupSizeY,
+        kBinaryAddIntWorkgroupSizeZ,
+    },
+    {
         "binary_div",
         kBinaryDivWGSL,
         kBinaryDivWorkgroupSizeX,
@@ -270,6 +280,13 @@ constexpr std::array<WebGPUShaderInfo, 138> kShaderRegistry = {{
         kBinaryMulWorkgroupSizeZ,
     },
     {
+        "binary_mul_int",
+        kBinaryMulIntWGSL,
+        kBinaryMulIntWorkgroupSizeX,
+        kBinaryMulIntWorkgroupSizeY,
+        kBinaryMulIntWorkgroupSizeZ,
+    },
+    {
         "binary_pow",
         kBinaryPowWGSL,
         kBinaryPowWorkgroupSizeX,
@@ -282,6 +299,13 @@ constexpr std::array<WebGPUShaderInfo, 138> kShaderRegistry = {{
         kBinarySubWorkgroupSizeX,
         kBinarySubWorkgroupSizeY,
         kBinarySubWorkgroupSizeZ,
+    },
+    {
+        "binary_sub_int",
+        kBinarySubIntWGSL,
+        kBinarySubIntWorkgroupSizeX,
+        kBinarySubIntWorkgroupSizeY,
+        kBinarySubIntWorkgroupSizeZ,
     },
     {
         "bitwise_not",
